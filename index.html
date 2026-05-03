@@ -714,7 +714,7 @@ function showNearbyArtworks(userRoom) {
   document.getElementById('results').innerHTML = nearby.map((a, i) => `
     <div class="artwork-card">
       <img src="${a.image}" alt="${a.title}" loading="${i < 2 ? 'eager' : 'lazy'}"
-           onerror="this.style.display='none'"
+           onerror="this.style.display='none'">
       <div class="card-body">
         <h3>${a.title} <span class="category">${categoryEmoji[a.category] || ''} ${a.category}</span></h3>
         <div class="artist">${a.artist}, ${a.year}</div>
