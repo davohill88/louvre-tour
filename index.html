@@ -1,811 +1,812 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <meta name="theme-color" content="#1a1a2e">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="apple-mobile-web-app-title" content="Louvre Tour">
-  <link rel="manifest" href="/louvre-tour/manifest.json">
-  <link rel="apple-touch-icon" href="https://upload.wikimedia.org/wikipedia/commons/thumb/6/66/Louvre_Museum_Wikimedia_Commons.jpg/192px-Louvre_Museum_Wikimedia_Commons.jpg">
-  <title>Louvre Tour Guide</title>
-  <style>
-    :root {
-      --bg: #1a1a2e;
-      --surface: #16213e;
-      --gold: #c9a84c;
-      --gold-light: #e0c76e;
-      --text: #e8e8e8;
-      --text-muted: #9a9ab0;
-      --accent: #0f3460;
-      --radius: 12px;
-    }
-
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
-      background: var(--bg);
-      color: var(--text);
-      min-height: 100dvh;
-      display: flex; flex-direction: column;
-      -webkit-tap-highlight-color: transparent;
-      user-select: none;
-      -webkit-user-select: none;
-    }
-
-    header {
-      background: var(--surface);
-      padding: 16px 20px;
-      text-align: center;
-      border-bottom: 2px solid var(--gold);
-    }
-    header h1 { font-size: 1.4rem; color: var(--gold); }
-    header p { font-size: 0.8rem; color: var(--text-muted); margin-top: 4px; }
-
-    main { flex: 1; padding: 16px; max-width: 500px; margin: 0 auto; width: 100%; }
-
-    .step-indicator {
-      display: flex; gap: 8px; margin-bottom: 20px;
-    }
-    .step {
-      flex: 1; text-align: center; font-size: 0.7rem; color: var(--text-muted);
-      transition: color 0.2s;
-    }
-    .step.active { color: var(--gold); font-weight: bold; }
-    .step-dot {
-      width: 10px; height: 10px; border-radius: 50%; background: var(--accent);
-      margin: 5px auto 0; transition: background 0.2s;
-    }
-    .step.active .step-dot { background: var(--gold); }
-
-    .quick-jumps {
-      display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px;
-    }
-    .quick-jumps button {
-      padding: 8px 14px; font-size: 0.8rem;
-      background: var(--surface);
-      color: var(--text);
-      border: 1px solid var(--accent);
-      border-radius: 20px;
-      cursor: pointer;
-      white-space: nowrap;
-      transition: border-color 0.2s, background 0.2s;
-    }
-    .quick-jumps button:active {
-      border-color: var(--gold);
-      background: var(--accent);
-    }
-
-    .selector { margin-bottom: 20px; }
-    .selector label {
-      display: block;
-      font-size: 0.75rem;
-      text-transform: uppercase;
-      letter-spacing: 0.1em;
-      color: var(--text-muted);
-      margin-bottom: 6px;
-    }
-    .selector select {
-      width: 100%;
-      padding: 14px 16px;
-      font-size: 1rem;
-      background: var(--surface);
-      color: var(--text);
-      border: 1px solid var(--accent);
-      border-radius: var(--radius);
-      appearance: none;
-      -webkit-appearance: none;
-      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23c9a84c' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
-      background-repeat: no-repeat;
-      background-position: right 14px center;
-      cursor: pointer;
-    }
-    .selector button, .back-link {
-      background: none; color: var(--gold); border: none;
-      padding: 10px 0; font-size: 0.8rem; cursor: pointer;
-      display: block;
-    }
-
-    .results-header {
-      display: flex; justify-content: space-between; align-items: center;
-      margin-bottom: 12px;
-    }
-    .results-header h2 { font-size: 1rem; color: var(--text); }
-    .results-header span { font-size: 0.75rem; color: var(--text-muted); }
-
-    .artwork-card {
-      background: var(--surface);
-      border-radius: var(--radius);
-      overflow: hidden;
-      margin-bottom: 14px;
-      border: 1px solid var(--accent);
-      transition: border-color 0.2s;
-    }
-    .artwork-card:active { border-color: var(--gold); }
-
-    .artwork-card img {
-      width: 100%; height: 220px; object-fit: cover; display: block;
-      background: var(--bg);
-    }
-
-    .card-body { padding: 14px 16px; }
-    .card-body h3 { font-size: 1.05rem; color: var(--gold-light); margin-bottom: 2px; }
-    .card-body .artist { font-size: 0.85rem; color: var(--text-muted); margin-bottom: 8px; }
-    .card-body .meta {
-      display: flex; gap: 12px; font-size: 0.75rem; color: var(--text-muted);
-      margin-bottom: 10px; flex-wrap: wrap;
-    }
-    .card-body .history {
-      font-size: 0.85rem; line-height: 1.55; color: var(--text);
-    }
-    .card-body .distance {
-      display: inline-block;
-      font-size: 0.7rem;
-      background: var(--accent);
-      color: var(--gold-light);
-      padding: 4px 12px;
-      border-radius: 20px;
-      margin-top: 10px;
-    }
-    .card-body .category {
-      display: inline-block;
-      font-size: 0.65rem;
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
-      background: rgba(201,168,76,0.15);
-      color: var(--gold);
-      padding: 2px 8px;
-      border-radius: 4px;
-      margin-left: 8px;
-    }
-
-    .empty-state {
-      text-align: center; padding: 40px 20px; color: var(--text-muted);
-    }
-    .empty-state .emoji { font-size: 3rem; margin-bottom: 12px; }
-    .empty-state p { font-size: 0.9rem; line-height: 1.5; }
-
-    footer {
-      text-align: center; padding: 14px; font-size: 0.7rem; color: var(--text-muted);
-      border-top: 1px solid var(--accent);
-      margin-top: auto;
-    }
-
-    #installBanner {
-      animation: slideUp 0.3s ease-out;
-    }
-    @keyframes slideUp {
-      from { transform: translateY(100%); }
-      to { transform: translateY(0); }
-    }
-
-    .img-credit {
-      font-size: 0.6rem; color: var(--text-muted);
-      padding: 4px 16px 0; opacity: 0.7;
-    }
-  </style>
-</head>
-<body>
-
-<header>
-  <h1>🏛️ Louvre Tour Guide</h1>
-  <p>Select your room to discover nearby masterpieces</p>
-</header>
-
-<main>
-  <div class="step-indicator">
-    <div class="step active" id="step1">Wing<span class="step-dot"></span></div>
-    <div class="step" id="step2">Floor<span class="step-dot"></span></div>
-    <div class="step" id="step3">Room<span class="step-dot"></span></div>
-  </div>
-
-  <div class="quick-jumps" id="quickJumps"></div>
-
-  <div class="selector" id="selectorContainer"></div>
-
-  <div class="results-header" id="resultsHeader" style="display:none">
-    <h2>Nearby Masterpieces</h2>
-    <span id="resultCount"></span>
-  </div>
-
-  <div id="results"></div>
-</main>
-
-<footer>
-  Data from Wikipedia & Wikimedia Commons · Not affiliated with the Musée du Louvre · <a href="https://github.com/davohill88/louvre-tour" style="color:var(--gold)">GitHub</a>
-</footer>
-
-<script>
-// ─────────────────────────────────────
-// ARTWORK DATASET — 25 curated highlights
-// ─────────────────────────────────────
-const ARTWORKS = [
-  // === DENON WING, LEVEL 1 ===
-  {
-    id: "winged-victory",
-    title: "Winged Victory of Samothrace",
-    artist: "Unknown (Hellenistic Greek)",
-    year: "c. 190 BC",
-    medium: "Parian marble",
-    wing: "denon", floor: 1, room: 703, position: "Daru Staircase",
-    image: "https://upload.wikimedia.org/wikipedia/commons/thumb/7/7b/Nike_of_Samothrake_Louvre_Ma2369_n4.jpg/480px-Nike_of_Samothrake_Louvre_Ma2369_n4.jpg",
-    history: "This 2,200-year-old marble sculpture of Nike, the Greek goddess of victory, was discovered in 1863 on the island of Samothrace. She stands on the prow of a ship, celebrating a naval victory. The dramatic placement atop the Daru staircase makes her one of the most photographed artworks in the museum.",
-    category: "sculpture"
-  },
-  {
-    id: "mona-lisa",
-    title: "Mona Lisa (La Joconde)",
-    artist: "Leonardo da Vinci",
-    year: "c. 1503–1519",
-    medium: "Oil on poplar panel",
-    wing: "denon", floor: 1, room: 711, position: "Salle des États",
-    image: "https://upload.wikimedia.org/wikipedia/commons/thumb/e/ec/Mona_Lisa%2C_by_Leonardo_da_Vinci%2C_from_C2RMF_retouched.jpg/480px-Mona_Lisa%2C_by_Leonardo_da_Vinci%2C_from_C2RMF_retouched.jpg",
-    history: "The world's most famous portrait, believed to depict Lisa Gherardini, wife of Florentine merchant Francesco del Giocondo. Her enigmatic smile and sfumato technique revolutionized portraiture. Stolen in 1911 by Louvre employee Vincenzo Peruggia, who walked out with it under his coat — the theft made it a global icon.",
-    category: "painting"
-  },
-  {
-    id: "wedding-cana",
-    title: "The Wedding Feast at Cana",
-    artist: "Paolo Veronese",
-    year: "1563",
-    medium: "Oil on canvas",
-    wing: "denon", floor: 1, room: 711, position: "Salle des États (opposite Mona Lisa)",
-    image: "https://upload.wikimedia.org/wikipedia/commons/thumb/e/e2/Paolo_Veronese_-_The_Wedding_at_Cana_-_WGA24887.jpg/480px-Paolo_Veronese_-_The_Wedding_at_Cana_-_WGA24887.jpg",
-    history: "At 6.77 × 9.94 meters, this is the largest painting in the Louvre. It depicts Jesus's first miracle — turning water into wine — set as a lavish Venetian banquet. Most visitors miss it because they're staring at the Mona Lisa opposite. Napoleon looted it from Venice in 1797.",
-    category: "painting"
-  },
-  {
-    id: "raft-medusa",
-    title: "The Raft of the Medusa",
-    artist: "Théodore Géricault",
-    year: "1818–1819",
-    medium: "Oil on canvas",
-    wing: "denon", floor: 1, room: 700, position: "Salle Mollien",
-    image: "https://upload.wikimedia.org/wikipedia/commons/thumb/1/1e/JEAN_LOUIS_TH%C3%89ODORE_G%C3%89RICAULT_-_La_Balsa_de_la_Medusa_%28Museo_del_Louvre%2C_1818-19%29.jpg/480px-JEAN_LOUIS_TH%C3%89ODORE_G%C3%89RICAULT_-_La_Balsa_de_la_Medusa_%28Museo_del_Louvre%2C_1818-19%29.jpg",
-    history: "A monumental 4.91 × 7.16 meter depiction of a real 1816 tragedy: a French naval frigate ran aground and 147 survivors drifted for 13 days on a raft — only 15 lived, resorting to cannibalism. Géricault interviewed survivors and studied corpses to achieve brutal realism. The painting became a political scandal.",
-    category: "painting"
-  },
-  {
-    id: "liberty",
-    title: "Liberty Leading the People",
-    artist: "Eugène Delacroix",
-    year: "1830",
-    medium: "Oil on canvas",
-    wing: "denon", floor: 1, room: 700, position: "Salle Mollien",
-    image: "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a7/Eug%C3%A8ne_Delacroix_-_La_libert%C3%A9_guidant_le_peuple.jpg/480px-Eug%C3%A8ne_Delacroix_-_La_libert%C3%A9_guidant_le_peuple.jpg",
-    history: "Delacroix painted this in just three months, capturing the July Revolution of 1830 that toppled King Charles X. Liberty — a woman holding the tricolor flag and a bayonet — leads a diverse crowd over barricades. It became the universal symbol of revolution and is featured on French postage stamps.",
-    category: "painting"
-  },
-  {
-    id: "coronation-napoleon",
-    title: "The Coronation of Napoleon",
-    artist: "Jacques-Louis David",
-    year: "1805–1807",
-    medium: "Oil on canvas",
-    wing: "denon", floor: 1, room: 702,
-    image: "https://upload.wikimedia.org/wikipedia/commons/thumb/0/07/Jacques-Louis_David_-_The_Coronation_of_Napoleon_%281805-1807%29.jpg/480px-Jacques-Louis_David_-_The_Coronation_of_Napoleon_%281805-1807%29.jpg",
-    history: "A staggering 6.21 × 9.79 meter canvas capturing Napoleon crowning himself Emperor — a deliberate snub to the Pope, who sits passively behind him. David attended the ceremony and painted 191 individual portraits, many from life. Napoleon famously said: 'One walks through this painting.'",
-    category: "painting"
-  },
-  {
-    id: "virgin-rocks",
-    title: "The Virgin of the Rocks",
-    artist: "Leonardo da Vinci",
-    year: "c. 1483–1486",
-    medium: "Oil on panel",
-    wing: "denon", floor: 1, room: 708,
-    image: "https://upload.wikimedia.org/wikipedia/commons/thumb/3/3d/Leonardo_da_Vinci_-_Virgin_of_the_Rocks_%28Louvre%29.jpg/480px-Leonardo_da_Vinci_-_Virgin_of_the_Rocks_%28Louvre%29.jpg",
-    history: "One of two versions — this is the earlier, entirely by Leonardo's hand. The strange, otherworldly grotto setting and the angel Uriel's mysterious pointing gesture have puzzled scholars for centuries. The Louvre acquired it from the French royal collection.",
-    category: "painting"
-  },
-  {
-    id: "death-virgin",
-    title: "Death of the Virgin",
-    artist: "Caravaggio",
-    year: "1605–1606",
-    medium: "Oil on canvas",
-    wing: "denon", floor: 1, room: 710,
-    image: "https://upload.wikimedia.org/wikipedia/commons/thumb/4/45/Michelangelo_Caravaggio_062.jpg/480px-Michelangelo_Caravaggio_062.jpg",
-    history: "Caravaggio's radical realism scandalized Rome — he painted the Virgin's body as a real corpse with swollen feet, and rumor said he used a drowned prostitute as his model. The church that commissioned it rejected the painting. The dramatic chiaroscuro became his signature.",
-    category: "painting"
-  },
-  {
-    id: "lacemaker",
-    title: "The Lacemaker",
-    artist: "Johannes Vermeer",
-    year: "c. 1669–1670",
-    medium: "Oil on canvas",
-    wing: "denon", floor: 1, room: 718,
-    image: "https://upload.wikimedia.org/wikipedia/commons/thumb/d/da/Johannes_Vermeer_-_The_Lacemaker_-_WGA24657.jpg/480px-Johannes_Vermeer_-_The_Lacemaker_-_WGA24657.jpg",
-    history: "Vermeer's smallest painting (24.5 × 21 cm) — and one of his most intimate. The young woman is completely absorbed in her needlework. Vermeer's blurred thread details create an almost photographic shallow depth of field, centuries ahead of its time. Only ~34 Vermeers exist worldwide.",
-    category: "painting"
-  },
-  {
-    id: "horatii",
-    title: "Oath of the Horatii",
-    artist: "Jacques-Louis David",
-    year: "1784",
-    medium: "Oil on canvas",
-    wing: "denon", floor: 1, room: 724,
-    image: "https://upload.wikimedia.org/wikipedia/commons/thumb/9/9c/Jacques-Louis_David_-_Oath_of_the_Horatii_-_Google_Art_Project.jpg/480px-Jacques-Louis_David_-_Oath_of_the_Horatii_-_Google_Art_Project.jpg",
-    history: "The painting that launched Neoclassicism. Three Roman brothers swear an oath to fight to the death for Rome. The stark geometry, muted colors, and theatrical poses were a direct challenge to the frivolity of Rococo. It was an instant sensation at the 1785 Paris Salon.",
-    category: "painting"
-  },
-  {
-    id: "st-john",
-    title: "St. John the Baptist",
-    artist: "Leonardo da Vinci",
-    year: "c. 1513–1516",
-    medium: "Oil on walnut panel",
-    wing: "denon", floor: 1, room: 712,
-    image: "https://upload.wikimedia.org/wikipedia/commons/thumb/1/10/Leonardo_da_Vinci_-_Saint_John_the_Baptist_C2RMF_retouched.jpg/480px-Leonardo_da_Vinci_-_Saint_John_the_Baptist_C2RMF_retouched.jpg",
-    history: "Leonardo's final painting, kept in his studio until his death. The androgynous figure, emerging from darkness with a mysterious smile and pointing upward, has been called one of the most psychologically complex portraits in Western art. Its sfumato technique reaches its peak here.",
-    category: "painting"
-  },
-
-  // === DENON WING, LEVEL 0 ===
-  {
-    id: "dying-slave",
-    title: "The Dying Slave",
-    artist: "Michelangelo",
-    year: "1513–1516",
-    medium: "Marble",
-    wing: "denon", floor: 0, room: 403,
-    image: "https://upload.wikimedia.org/wikipedia/commons/thumb/2/2e/Michelangelo_Moses_Dying_Slave.jpg/480px-Michelangelo_Moses_Dying_Slave.jpg",
-    history: "Originally intended for Pope Julius II's tomb, this unfinished figure appears to be slipping from sleep into death rather than struggling. Michelangelo believed the figure was already in the marble waiting to be freed. The Rebellious Slave stands nearby, twisting in defiance.",
-    category: "sculpture"
-  },
-  {
-    id: "psyche-cupid",
-    title: "Psyche Revived by Cupid's Kiss",
-    artist: "Antonio Canova",
-    year: "1793",
-    medium: "Marble",
-    wing: "denon", floor: 0, room: 105,
-    image: "https://upload.wikimedia.org/wikipedia/commons/thumb/f/fc/Antonio_Canova_-_Psyche_Revived_by_Cupid%27s_Kiss_-_WGA4146.jpg/480px-Antonio_Canova_-_Psyche_Revived_by_Cupid%27s_Kiss_-_WGA4146.jpg",
-    history: "From the Roman myth: Psyche is awakened by Cupid's kiss after opening a forbidden box that plunged her into deathlike sleep. Canova's marble achieves impossible lightness — their wings seem to float, and two bodies touch at only three points. One of the most romantic sculptures ever made.",
-    category: "sculpture"
-  },
-
-  // === SULLY WING, LEVEL 0 (Greek & Roman Antiquities) ===
-  {
-    id: "venus-de-milo",
-    title: "Venus de Milo",
-    artist: "Alexandros of Antioch",
-    year: "c. 130–100 BC",
-    medium: "Parian marble",
-    wing: "sully", floor: 0, room: 345,
-    image: "https://upload.wikimedia.org/wikipedia/commons/thumb/d/d2/Paris_75001_V%C3%A9nus_de_Milo_Louvre_Museum_Ma_399_01.jpg/480px-Paris_75001_V%C3%A9nus_de_Milo_Louvre_Museum_Ma_399_01.jpg",
-    history: "Discovered in 1820 by a Greek farmer on the island of Milos — a French naval officer happened to be there and convinced authorities to acquire it. Her missing arms have sparked endless theories: was she holding an apple? A mirror? The marble's warm glow comes from the island's unique stone.",
-    category: "sculpture"
-  },
-  {
-    id: "hermaphroditus",
-    title: "Sleeping Hermaphroditus",
-    artist: "Ancient Roman / Bernini (mattress)",
-    year: "2nd c. AD (mattress: 1620)",
-    medium: "Marble",
-    wing: "sully", floor: 0, room: 340,
-    image: "https://upload.wikimedia.org/wikipedia/commons/thumb/4/4f/Borghese_Hermaphroditus_Louvre_Ma231.jpg/480px-Borghese_Hermaphroditus_Louvre_Ma231.jpg",
-    history: "At first glance: a sleeping woman. Walk around and discover the surprise — the child of Hermes and Aphrodite, both male and female. Bernini carved the remarkably realistic marble mattress it lies on, commissioned by Cardinal Borghese who kept it in his private collection.",
-    category: "sculpture"
-  },
-  {
-    id: "borghese-gladiator",
-    title: "Borghese Gladiator",
-    artist: "Agasias of Ephesus",
-    year: "c. 100 BC",
-    medium: "Marble",
-    wing: "sully", floor: 0, room: 304,
-    image: "https://upload.wikimedia.org/wikipedia/commons/thumb/d/d0/Borghese_gladiator_1_mosaic_delaTorre.jpg/480px-Borghese_gladiator_1_mosaic_delaTorre.jpg",
-    history: "A life-size warrior caught mid-combat, blocking an attack from above — his shield arm raised, body coiled with tension. Napoleon admired it so much he had it shipped to Paris after defeating the Borghese family. It influenced generations of artists, including Rodin.",
-    category: "sculpture"
-  },
-  {
-    id: "diana-versailles",
-    title: "Diana of Versailles",
-    artist: "Roman copy of Greek original",
-    year: "1st–2nd c. AD",
-    medium: "Marble",
-    wing: "sully", floor: 0, room: 338,
-    image: "https://upload.wikimedia.org/wikipedia/commons/thumb/1/11/Diana_of_Versailles_Louvre_Ma589.jpg/480px-Diana_of_Versailles_Louvre_Ma589.jpg",
-    history: "The goddess of the hunt mid-stride, reaching for an arrow with a leaping stag at her side. A Roman marble copy of a lost Greek bronze from c. 325 BC. Once stood in the Hall of Mirrors at Versailles before the Revolution brought it to the Louvre.",
-    category: "sculpture"
-  },
-
-  // === SULLY WING, LEVEL 1 (Egyptian Antiquities) ===
-  {
-    id: "seated-scribe",
-    title: "The Seated Scribe",
-    artist: "Unknown (Egyptian Old Kingdom)",
-    year: "c. 2600–2350 BC",
-    medium: "Painted limestone, rock crystal eyes",
-    wing: "sully", floor: 1, room: 636,
-    image: "https://upload.wikimedia.org/wikipedia/commons/thumb/4/40/The_seated_scribe.jpg/480px-The_seated_scribe.jpg",
-    history: "One of the most lifelike Egyptian statues ever found. The scribe's eyes are inlaid with rock crystal and copper — they follow you as you walk past. In a culture that idealized youth and perfection, this middle-aged man with a slight belly was revolutionary. Found at Saqqara in 1850.",
-    category: "antiquity"
-  },
-  {
-    id: "great-sphinx",
-    title: "Great Sphinx of Tanis",
-    artist: "Unknown (Egyptian Old Kingdom)",
-    year: "c. 2600 BC",
-    medium: "Granite",
-    wing: "sully", floor: 1, room: 635,
-    image: "https://upload.wikimedia.org/wikipedia/commons/thumb/1/13/Louvre_032007_22.jpg/480px-Louvre_032007_22.jpg",
-    history: "One of the largest sphinxes outside Egypt, carved from a single block of rose granite over 4,600 years ago. The lion body represents strength; the pharaoh's head represents wisdom. Hieroglyphs name Pharaoh Amenemhat II. It guards the entrance to the Egyptian galleries.",
-    category: "antiquity"
-  },
-  {
-    id: "ramesses-ii",
-    title: "Colossal Statue of Ramesses II",
-    artist: "Unknown (Egyptian New Kingdom)",
-    year: "c. 1250 BC",
-    medium: "Granite",
-    wing: "sully", floor: 1, room: 640,
-    image: "https://upload.wikimedia.org/wikipedia/commons/thumb/e/e0/RamsesIIEgypt.jpg/480px-RamsesIIEgypt.jpg",
-    history: "Ramesses II ruled Egypt for 66 years and built more monuments than any other pharaoh. This colossal statue shows him with the crook and flail, symbols of kingship. It once stood at the Temple of Ptah in Memphis. The cartouche on his shoulder bears his throne name.",
-    category: "antiquity"
-  },
-  {
-    id: "akhenaten",
-    title: "Colossal Statue of Akhenaten",
-    artist: "Unknown (Egyptian New Kingdom)",
-    year: "c. 1350 BC",
-    medium: "Sandstone",
-    wing: "sully", floor: 1, room: 638,
-    image: "https://upload.wikimedia.org/wikipedia/commons/thumb/4/4c/Akhenaten_statue.jpg/480px-Akhenaten_statue.jpg",
-    history: "The 'heretic pharaoh' who abandoned Egypt's pantheon for a single sun god, Aten. This statue's strange features — elongated face, full lips, narrow shoulders — sparked theories of genetic disorders, but likely represent a radical new artistic style Akhenaten imposed.",
-    category: "antiquity"
-  },
-
-  // === RICHELIEU WING, LEVEL 1 ===
-  {
-    id: "napoleon-apartments",
-    title: "Napoleon III Apartments (Grand Salon)",
-    artist: "Charles Raphaël Maréchal (decor)",
-    year: "1854–1861",
-    medium: "Gilt stucco, velvet, crystal chandeliers",
-    wing: "richelieu", floor: 1, room: 544,
-    image: "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f5/Grand_Salon_Napol%C3%A9on_III_Louvre_Mus%C3%A9e_du_Louvre_Paris.jpg/480px-Grand_Salon_Napol%C3%A9on_III_Louvre_Mus%C3%A9e_du_Louvre_Paris.jpg",
-    history: "A time capsule of Second Empire excess. Gold-encrusted ceiling, crimson velvet drapes, Baccarat crystal chandeliers, and Sèvres porcelain. Napoleon III used these rooms for grand state dinners. The most complete surviving example of Second Empire interior design.",
-    category: "interior"
-  },
-  {
-    id: "hammurabi",
-    title: "Code of Hammurabi",
-    artist: "Unknown (Babylonian)",
-    year: "c. 1750 BC",
-    medium: "Basalt stele",
-    wing: "richelieu", floor: 1, room: 501,
-    image: "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f0/P1050763_Louvre_code_Hammurabi_face_rwk.JPG/480px-P1050763_Louvre_code_Hammurabi_face_rwk.JPG",
-    history: "The oldest surviving written law code in the world. The top shows King Hammurabi receiving the laws from the sun god Shamash. Below: 282 laws in cuneiform script covering property, trade, and family — 'an eye for an eye' originates here. Found in 1901 in present-day Iran.",
-    category: "antiquity"
-  },
-
-  // === RICHELIEU WING, LEVEL 2 (Northern European Paintings) ===
-  {
-    id: "astronomer",
-    title: "The Astronomer",
-    artist: "Johannes Vermeer",
-    year: "1668",
-    medium: "Oil on canvas",
-    wing: "richelieu", floor: 2, room: 802,
-    image: "https://upload.wikimedia.org/wikipedia/commons/thumb/6/6a/Johannes_Vermeer_-_The_Astronomer_-_WGA24685.jpg/480px-Johannes_Vermeer_-_The_Astronomer_-_WGA24685.jpg",
-    history: "A scholar reaches toward a celestial globe, bathed in Vermeer's signature golden light. The painting on the wall shows 'The Finding of Moses' — linking divine guidance and scientific discovery. Possibly a portrait of Antonie van Leeuwenhoek, the father of microbiology.",
-    category: "painting"
-  },
-  {
-    id: "card-sharp",
-    title: "The Card Sharp with the Ace of Diamonds",
-    artist: "Georges de La Tour",
-    year: "c. 1635",
-    medium: "Oil on canvas",
-    wing: "richelieu", floor: 2, room: 837,
-    image: "https://upload.wikimedia.org/wikipedia/commons/thumb/6/6e/Georges_de_La_Tour_-_Le_Tricheur_%C3%A0_l%27as_de_carreau.jpg/480px-Georges_de_La_Tour_-_Le_Tricheur_%C3%A0_l%27as_de_carreau.jpg",
-    history: "A tense drama in candlelight: a young nobleman is being cheated at cards. Three accomplices communicate through subtle glances. De La Tour was forgotten for 250 years and rediscovered only in the 20th century. This painting helped establish him as a master of psychological tension.",
-    category: "painting"
-  },
-
-  // === TRANSITION / ARCHITECTURE (visible regardless of wing) ===
-  {
-    id: "pyramid",
-    title: "The Louvre Pyramid",
-    artist: "I. M. Pei",
-    year: "1989",
-    medium: "Glass and steel",
-    wing: "all", floor: 0, room: 0,
-    position: "Cour Napoléon (main entrance)",
-    image: "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f8/Louvre_Pyramid_%2848636222261%29.jpg/480px-Louvre_Pyramid_%2848636222261%29.jpg",
-    history: "When unveiled, Parisians were furious — a glass pyramid in front of a Renaissance palace? Today it's the symbol of the Louvre. 673 glass panes (not the 666 of conspiracy theories). At night, the illuminated pyramid is one of the most photographed sights in Paris.",
-    category: "architecture"
-  },
-  {
-    id: "inverted-pyramid",
-    title: "The Inverted Pyramid",
-    artist: "I. M. Pei",
-    year: "1993",
-    medium: "Glass and steel",
-    wing: "all", floor: -1, room: 0,
-    position: "Carrousel du Louvre (underground mall)",
-    image: "https://upload.wikimedia.org/wikipedia/commons/thumb/5/58/Louvre_inverted_pyramid.jpg/480px-Louvre_inverted_pyramid.jpg",
-    history: "Made famous by The Da Vinci Code — the inverted pyramid hangs dramatically above a small stone pyramid below, forming a glass chandelier effect. It brings daylight into the underground shopping area. The book's 'Holy Grail beneath the pyramid' is fiction, but great fun.",
-    category: "architecture"
-  }
-];
-
-
-// ─────────────────────────────────────
-// NAVIGATION DATA
-// ─────────────────────────────────────
-const WINGS = [
-  { id: "denon", name: "Denon Wing", desc: "Italian paintings, Greek sculpture, Mona Lisa" },
-  { id: "sully", name: "Sully Wing", desc: "Egyptian antiquities, Venus de Milo, Greek & Roman" },
-  { id: "richelieu", name: "Richelieu Wing", desc: "Napoleon III Apartments, Near Eastern art, Dutch paintings" }
-];
-
-const FLOORS = [
-  { id: -1, name: "Lower Ground (−1)", desc: "Inverted Pyramid, medieval Louvre" },
-  { id: 0, name: "Ground Floor (0)", desc: "Greek, Roman & Etruscan sculptures" },
-  { id: 1, name: "First Floor (1)", desc: "Mona Lisa, Italian paintings, Egyptian galleries" },
-  { id: 2, name: "Second Floor (2)", desc: "Northern European paintings, Dutch masters" }
-];
-
-const FEATURED_SPOTS = [
-  { label: "🖼️ Mona Lisa", wing: "denon", floor: 1, room: 711 },
-  { label: "🗽 Venus de Milo", wing: "sully", floor: 0, room: 345 },
-  { label: "🪽 Winged Victory", wing: "denon", floor: 1, room: 703 },
-  { label: "👑 Napoleon III Apt", wing: "richelieu", floor: 1, room: 544 },
-  { label: "🇫🇷 Liberty", wing: "denon", floor: 1, room: 700 },
-  { label: "✍️ Seated Scribe", wing: "sully", floor: 1, room: 636 },
-];
-
-
-// ─────────────────────────────────────
-// STATE
-// ─────────────────────────────────────
-let selectedWing = null;
-let selectedFloor = null;
-let deferredPrompt = null;
-
-
-// ─────────────────────────────────────
-// STEP INDICATOR
-// ─────────────────────────────────────
-function updateSteps(activeStep) {
-  for (let i = 1; i <= 3; i++) {
-    document.getElementById('step' + i).classList.toggle('active', i === activeStep);
-  }
-}
-
-
-// ─────────────────────────────────────
-// ROOM HELPER
-// ─────────────────────────────────────
-function getRoomsForWingFloor(wing, floor) {
-  const roomSet = new Map();
-  ARTWORKS
-    .filter(a => (a.wing === wing || a.wing === 'all') && (a.floor === floor || a.wing === 'all'))
-    .forEach(a => {
-      if (!roomSet.has(a.room)) {
-        roomSet.set(a.room, {
-          room: a.room,
-          breadcrumb: a.position || `Wing ${wing}, Level ${floor}`,
-          count: 0
-        });
-      }
-      roomSet.get(a.room).count++;
-    });
-  return Array.from(roomSet.values()).sort((a, b) => a.room - b.room);
-}
-
-
-// ─────────────────────────────────────
-// SELECTOR RENDERING
-// ─────────────────────────────────────
-function renderWingSelector() {
-  updateSteps(1);
-  document.getElementById('selectorContainer').innerHTML = `
-    <label>Which wing are you in?</label>
-    <select id="sel" onchange="selectWing(this.value)">
-      <option value="">— Select a wing —</option>
-      ${WINGS.map(w => `<option value="${w.id}">${w.name} — ${w.desc}</option>`).join('')}
-    </select>
-  `;
-  document.getElementById('resultsHeader').style.display = 'none';
-  document.getElementById('results').innerHTML = `
-    <div class="empty-state">
-      <div class="emoji">📍</div>
-      <p>Start by selecting which wing of the Louvre you're standing in</p>
-      <p style="font-size:0.75rem;margin-top:8px;">Or tap a quick-jump button below</p>
-    </div>`;
-}
-
-function selectWing(wingId) {
-  if (!wingId) return;
-  selectedWing = wingId;
-  renderFloorSelector();
-}
-
-function renderFloorSelector() {
-  updateSteps(2);
-  const wingName = WINGS.find(w => w.id === selectedWing).name;
-  document.getElementById('selectorContainer').innerHTML = `
-    <label>Which floor of the ${wingName}?</label>
-    <select id="sel" onchange="selectFloor(this.value)">
-      <option value="">— Select a floor —</option>
-      ${FLOORS.map(f => `<option value="${f.id}">${f.name} — ${f.desc}</option>`).join('')}
-    </select>
-    <button class="back-link" onclick="resetToWing()">← Back to wings</button>
-  `;
-  document.getElementById('resultsHeader').style.display = 'none';
-  document.getElementById('results').innerHTML = '';
-}
-
-function selectFloor(floorId) {
-  if (floorId === '') return;
-  selectedFloor = parseInt(floorId);
-  renderRoomSelector();
-}
-
-function resetToWing() {
-  selectedWing = null;
-  selectedFloor = null;
-  renderWingSelector();
-}
-
-function renderRoomSelector() {
-  updateSteps(3);
-  const rooms = getRoomsForWingFloor(selectedWing, selectedFloor);
-  document.getElementById('selectorContainer').innerHTML = `
-    <label>What room number are you in?</label>
-    <select id="sel" onchange="showNearbyArtworks(parseInt(this.value))">
-      <option value="">— Select room —</option>
-      ${rooms.map(r => `<option value="${r.room}">Room ${r.room} → ${r.breadcrumb}</option>`).join('')}
-    </select>
-    <button class="back-link" onclick="goBackToFloor()">← Back to floors</button>
-  `;
-  document.getElementById('resultsHeader').style.display = 'none';
-  document.getElementById('results').innerHTML = '';
-}
-
-function goBackToFloor() {
-  renderFloorSelector();
-}
-
-
-// ─────────────────────────────────────
-// RESULTS DISPLAY
-// ─────────────────────────────────────
-function showNearbyArtworks(userRoom) {
-  const nearby = ARTWORKS
-    .filter(a => {
-      return (a.wing === selectedWing && a.floor === selectedFloor) ||
-             (a.wing === 'all' && a.floor === selectedFloor);
-    })
-    .map(a => ({
-      ...a,
-      distance: Math.abs(a.room - userRoom)
-    }))
-    .sort((a, b) => a.distance - b.distance);
-
-  document.getElementById('resultsHeader').style.display = 'flex';
-  document.getElementById('resultCount').textContent = `${nearby.length} found`;
-
-  if (nearby.length === 0) {
-    document.getElementById('results').innerHTML = `
-      <div class="empty-state">
-        <div class="emoji">🔍</div>
-        <p>No artworks in our guide for this area.<br>Try a different room number.</p>
-      </div>`;
-    return;
-  }
-
-  const categoryEmoji = {
-    painting: '🎨',
-    sculpture: '🗿',
-    antiquity: '🏺',
-    interior: '🏰',
-    architecture: '🏗️'
-  };
-
-  document.getElementById('results').innerHTML = nearby.map((a, i) => `
-    <div class="artwork-card">
-      <img src="${a.image}" alt="${a.title}" loading="${i < 2 ? 'eager' : 'lazy'}"
-           onerror="this.outerHTML='<div style=\\'height:60px;background:var(--bg);border-radius:var(--radius) var(--radius) 0 0\\'></div>'">
-      <div class="card-body">
-        <h3>${a.title} <span class="category">${categoryEmoji[a.category] || ''} ${a.category}</span></h3>
-        <div class="artist">${a.artist}, ${a.year}</div>
-        <div class="meta">
-          <span>📐 ${a.medium}</span>
-          <span>🚪 Room ${a.room}</span>
-        </div>
-        <div class="history">${a.history}</div>
-        ${a.distance === 0
-          ? '<div class="distance">📍 You are here — in this room!</div>'
-          : `<div class="distance">📍 ~${a.distance} room${a.distance > 1 ? 's' : ''} away</div>`}
-      </div>
-    </div>
-  `).join('');
-}
-
-
-// ─────────────────────────────────────
-// QUICK JUMPS
-// ─────────────────────────────────────
-function renderQuickJumps() {
-  document.getElementById('quickJumps').innerHTML = FEATURED_SPOTS.map(s => `
-    <button onclick="jumpTo('${s.wing}', ${s.floor}, ${s.room})">${s.label}</button>
-  `).join('');
-}
-
-function jumpTo(wing, floor, room) {
-  selectedWing = wing;
-  selectedFloor = floor;
-  updateSteps(3);
-  document.getElementById('selectorContainer').innerHTML = `
-    <label>📍 You jumped to: ${FEATURED_SPOTS.find(s => s.room === room)?.label || 'Room ' + room}</label>
-    <p style="font-size:0.8rem;color:var(--text-muted);margin-bottom:10px;">
-      ${WINGS.find(w=>w.id===wing).name}, Floor ${floor}, Room ${room}
-    </p>
-    <button class="back-link" onclick="resetToWing()">← Navigate from scratch</button>
-  `;
-  showNearbyArtworks(room);
-}
-
-
-// ─────────────────────────────────────
-// PWA INSTALL
-// ─────────────────────────────────────
-window.addEventListener('beforeinstallprompt', e => {
-  e.preventDefault();
-  deferredPrompt = e;
-  const banner = document.createElement('div');
-  banner.id = 'installBanner';
-  banner.innerHTML = `
-    <div style="position:fixed;bottom:0;left:0;right:0;background:var(--surface);padding:14px 20px;
-                border-top:2px solid var(--gold);display:flex;align-items:center;gap:12px;z-index:100;
-                justify-content:space-between;">
-      <span style="font-size:0.85rem;">📲 Add to home screen for quick access</span>
-      <div style="display:flex;gap:8px;">
-        <button onclick="dismissInstall()" style="background:none;color:var(--text-muted);border:none;font-size:0.8rem;padding:6px;">Later</button>
-        <button onclick="installApp()" style="background:var(--gold);color:var(--bg);border:none;padding:8px 16px;border-radius:20px;font-weight:bold;font-size:0.8rem;">Install</button>
-      </div>
-    </div>`;
-  document.body.appendChild(banner);
-});
-
-function installApp() {
-  if (deferredPrompt) {
-    deferredPrompt.prompt();
-    deferredPrompt.userChoice.then(result => {
-      console.log('Install:', result.outcome);
-      deferredPrompt = null;
-      document.getElementById('installBanner')?.remove();
-    });
-  }
-}
-
-function dismissInstall() {
-  document.getElementById('installBanner')?.remove();
-}
-
-// ─────────────────────────────────────
-// SERVICE WORKER
-// ─────────────────────────────────────
-if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('/louvre-tour/sw.js')
-    .then(reg => console.log('SW registered:', reg.scope))
-    .catch(err => console.log('SW failed:', err));
-}
-
-// ─────────────────────────────────────
-// INIT
-// ─────────────────────────────────────
-renderQuickJumps();
-renderWingSelector();
-</script>
-</body>
-</html>
+     1|<!DOCTYPE html>
+     2|<html lang="en">
+     3|<head>
+     4|  <meta charset="UTF-8">
+     5|  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+     6|  <meta name="theme-color" content="#1a1a2e">
+     7|  <meta name="apple-mobile-web-app-capable" content="yes">
+     8|  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+     9|  <meta name="apple-mobile-web-app-title" content="Louvre Tour">
+    10|  <link rel="manifest" href="/louvre-tour/manifest.json">
+    11|  <link rel="apple-touch-icon" href="https://upload.wikimedia.org/wikipedia/commons/thumb/6/66/Louvre_Museum_Wikimedia_Commons.jpg/192px-Louvre_Museum_Wikimedia_Commons.jpg">
+    12|  <title>Louvre Tour Guide</title>
+    13|  <style>
+    14|    :root {
+    15|      --bg: #1a1a2e;
+    16|      --surface: #16213e;
+    17|      --gold: #c9a84c;
+    18|      --gold-light: #e0c76e;
+    19|      --text: #e8e8e8;
+    20|      --text-muted: #9a9ab0;
+    21|      --accent: #0f3460;
+    22|      --radius: 12px;
+    23|    }
+    24|
+    25|    * { box-sizing: border-box; margin: 0; padding: 0; }
+    26|
+    27|    body {
+    28|      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+    29|      background: var(--bg);
+    30|      color: var(--text);
+    31|      min-height: 100dvh;
+    32|      display: flex; flex-direction: column;
+    33|      -webkit-tap-highlight-color: transparent;
+    34|      user-select: none;
+    35|      -webkit-user-select: none;
+    36|    }
+    37|
+    38|    header {
+    39|      background: var(--surface);
+    40|      padding: 16px 20px;
+    41|      text-align: center;
+    42|      border-bottom: 2px solid var(--gold);
+    43|    }
+    44|    header h1 { font-size: 1.4rem; color: var(--gold); }
+    45|    header p { font-size: 0.8rem; color: var(--text-muted); margin-top: 4px; }
+    46|
+    47|    main { flex: 1; padding: 16px; max-width: 500px; margin: 0 auto; width: 100%; }
+    48|
+    49|    .step-indicator {
+    50|      display: flex; gap: 8px; margin-bottom: 20px;
+    51|    }
+    52|    .step {
+    53|      flex: 1; text-align: center; font-size: 0.7rem; color: var(--text-muted);
+    54|      transition: color 0.2s;
+    55|    }
+    56|    .step.active { color: var(--gold); font-weight: bold; }
+    57|    .step-dot {
+    58|      width: 10px; height: 10px; border-radius: 50%; background: var(--accent);
+    59|      margin: 5px auto 0; transition: background 0.2s;
+    60|    }
+    61|    .step.active .step-dot { background: var(--gold); }
+    62|
+    63|    .quick-jumps {
+    64|      display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px;
+    65|    }
+    66|    .quick-jumps button {
+    67|      padding: 8px 14px; font-size: 0.8rem;
+    68|      background: var(--surface);
+    69|      color: var(--text);
+    70|      border: 1px solid var(--accent);
+    71|      border-radius: 20px;
+    72|      cursor: pointer;
+    73|      white-space: nowrap;
+    74|      transition: border-color 0.2s, background 0.2s;
+    75|    }
+    76|    .quick-jumps button:active {
+    77|      border-color: var(--gold);
+    78|      background: var(--accent);
+    79|    }
+    80|
+    81|    .selector { margin-bottom: 20px; }
+    82|    .selector label {
+    83|      display: block;
+    84|      font-size: 0.75rem;
+    85|      text-transform: uppercase;
+    86|      letter-spacing: 0.1em;
+    87|      color: var(--text-muted);
+    88|      margin-bottom: 6px;
+    89|    }
+    90|    .selector select {
+    91|      width: 100%;
+    92|      padding: 14px 16px;
+    93|      font-size: 1rem;
+    94|      background: var(--surface);
+    95|      color: var(--text);
+    96|      border: 1px solid var(--accent);
+    97|      border-radius: var(--radius);
+    98|      appearance: none;
+    99|      -webkit-appearance: none;
+   100|      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23c9a84c' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+   101|      background-repeat: no-repeat;
+   102|      background-position: right 14px center;
+   103|      cursor: pointer;
+   104|    }
+   105|    .selector button, .back-link {
+   106|      background: none; color: var(--gold); border: none;
+   107|      padding: 10px 0; font-size: 0.8rem; cursor: pointer;
+   108|      display: block;
+   109|    }
+   110|
+   111|    .results-header {
+   112|      display: flex; justify-content: space-between; align-items: center;
+   113|      margin-bottom: 12px;
+   114|    }
+   115|    .results-header h2 { font-size: 1rem; color: var(--text); }
+   116|    .results-header span { font-size: 0.75rem; color: var(--text-muted); }
+   117|
+   118|    .artwork-card {
+   119|      background: var(--surface);
+   120|      border-radius: var(--radius);
+   121|      overflow: hidden;
+   122|      margin-bottom: 14px;
+   123|      border: 1px solid var(--accent);
+   124|      transition: border-color 0.2s;
+   125|    }
+   126|    .artwork-card:active { border-color: var(--gold); }
+   127|
+   128|    .artwork-card img {
+   129|      width: 100%; height: 220px; object-fit: cover; display: block;
+   130|      background: var(--bg);
+   131|    }
+   132|
+   133|    .card-body { padding: 14px 16px; }
+   134|    .card-body h3 { font-size: 1.05rem; color: var(--gold-light); margin-bottom: 2px; }
+   135|    .card-body .artist { font-size: 0.85rem; color: var(--text-muted); margin-bottom: 8px; }
+   136|    .card-body .meta {
+   137|      display: flex; gap: 12px; font-size: 0.75rem; color: var(--text-muted);
+   138|      margin-bottom: 10px; flex-wrap: wrap;
+   139|    }
+   140|    .card-body .history {
+   141|      font-size: 0.85rem; line-height: 1.55; color: var(--text);
+   142|    }
+   143|    .card-body .distance {
+   144|      display: inline-block;
+   145|      font-size: 0.7rem;
+   146|      background: var(--accent);
+   147|      color: var(--gold-light);
+   148|      padding: 4px 12px;
+   149|      border-radius: 20px;
+   150|      margin-top: 10px;
+   151|    }
+   152|    .card-body .category {
+   153|      display: inline-block;
+   154|      font-size: 0.65rem;
+   155|      text-transform: uppercase;
+   156|      letter-spacing: 0.08em;
+   157|      background: rgba(201,168,76,0.15);
+   158|      color: var(--gold);
+   159|      padding: 2px 8px;
+   160|      border-radius: 4px;
+   161|      margin-left: 8px;
+   162|    }
+   163|
+   164|    .empty-state {
+   165|      text-align: center; padding: 40px 20px; color: var(--text-muted);
+   166|    }
+   167|    .empty-state .emoji { font-size: 3rem; margin-bottom: 12px; }
+   168|    .empty-state p { font-size: 0.9rem; line-height: 1.5; }
+   169|
+   170|    footer {
+   171|      text-align: center; padding: 14px; font-size: 0.7rem; color: var(--text-muted);
+   172|      border-top: 1px solid var(--accent);
+   173|      margin-top: auto;
+   174|    }
+   175|
+   176|    #installBanner {
+   177|      animation: slideUp 0.3s ease-out;
+   178|    }
+   179|    @keyframes slideUp {
+   180|      from { transform: translateY(100%); }
+   181|      to { transform: translateY(0); }
+   182|    }
+   183|
+   184|    .img-credit {
+   185|      font-size: 0.6rem; color: var(--text-muted);
+   186|      padding: 4px 16px 0; opacity: 0.7;
+   187|    }
+   188|  </style>
+   189|</head>
+   190|<body>
+   191|
+   192|<header>
+   193|  <h1>🏛️ Louvre Tour Guide</h1>
+   194|  <p>Select your room to discover nearby masterpieces</p>
+   195|</header>
+   196|
+   197|<main>
+   198|  <div class="step-indicator">
+   199|    <div class="step active" id="step1">Wing<span class="step-dot"></span></div>
+   200|    <div class="step" id="step2">Floor<span class="step-dot"></span></div>
+   201|    <div class="step" id="step3">Room<span class="step-dot"></span></div>
+   202|  </div>
+   203|
+   204|  <div class="quick-jumps" id="quickJumps"></div>
+   205|
+   206|  <div class="selector" id="selectorContainer"></div>
+   207|
+   208|  <div class="results-header" id="resultsHeader" style="display:none">
+   209|    <h2>Nearby Masterpieces</h2>
+   210|    <span id="resultCount"></span>
+   211|  </div>
+   212|
+   213|  <div id="results"></div>
+   214|</main>
+   215|
+   216|<footer>
+   217|  Data from Wikipedia & Wikimedia Commons · Not affiliated with the Musée du Louvre · <a href="https://github.com/davohill88/louvre-tour" style="color:var(--gold)">GitHub</a>
+   218|</footer>
+   219|
+   220|<script>
+   221|// ─────────────────────────────────────
+   222|// ARTWORK DATASET — 25 curated highlights
+   223|// ─────────────────────────────────────
+   224|const ARTWORKS = [
+   225|  // === DENON WING, LEVEL 1 ===
+   226|  {
+   227|    id: "winged-victory",
+   228|    title: "Winged Victory of Samothrace",
+   229|    artist: "Unknown (Hellenistic Greek)",
+   230|    year: "c. 190 BC",
+   231|    medium: "Parian marble",
+   232|    wing: "denon", floor: 1, room: 703, position: "Daru Staircase",
+   233|    image: "https://images.weserv.nl/?url=upload.wikimedia.org/wikipedia/commons/thumb/b/bf/Victoire_de_Samothrace_-_Musee_du_Louvre_-_20190812.jpg/480px-Victoire_de_Samothrace_-_Musee_du_Louvre_-_20190812.jpg&w=480",
+   234|    history: "This 2,200-year-old marble sculpture of Nike, the Greek goddess of victory, was discovered in 1863 on the island of Samothrace. She stands on the prow of a ship, celebrating a naval victory. The dramatic placement atop the Daru staircase makes her one of the most photographed artworks in the museum.",
+   235|    category: "sculpture"
+   236|  },
+   237|  {
+   238|    id: "mona-lisa",
+   239|    title: "Mona Lisa (La Joconde)",
+   240|    artist: "Leonardo da Vinci",
+   241|    year: "c. 1503–1519",
+   242|    medium: "Oil on poplar panel",
+   243|    wing: "denon", floor: 1, room: 711, position: "Salle des États",
+   244|    image: "https://images.weserv.nl/?url=upload.wikimedia.org/wikipedia/commons/thumb/e/ec/Mona_Lisa%2C_by_Leonardo_da_Vinci%2C_from_C2RMF_retouched.jpg/480px-Mona_Lisa%2C_by_Leonardo_da_Vinci%2C_from_C2RMF_retouched.jpg&w=480",
+   245|    history: "The world's most famous portrait, believed to depict Lisa Gherardini, wife of Florentine merchant Francesco del Giocondo. Her enigmatic smile and sfumato technique revolutionized portraiture. Stolen in 1911 by Louvre employee Vincenzo Peruggia, who walked out with it under his coat — the theft made it a global icon.",
+   246|    category: "painting"
+   247|  },
+   248|  {
+   249|    id: "wedding-cana",
+   250|    title: "The Wedding Feast at Cana",
+   251|    artist: "Paolo Veronese",
+   252|    year: "1563",
+   253|    medium: "Oil on canvas",
+   254|    wing: "denon", floor: 1, room: 711, position: "Salle des États (opposite Mona Lisa)",
+   255|    image: "https://images.weserv.nl/?url=upload.wikimedia.org/wikipedia/commons/thumb/c/c6/Paolo_Veronese_-_The_Wedding_at_Cana_-_WGA24887.jpg/480px-Paolo_Veronese_-_The_Wedding_at_Cana_-_WGA24887.jpg&w=480",
+   256|    history: "At 6.77 × 9.94 meters, this is the largest painting in the Louvre. It depicts Jesus's first miracle — turning water into wine — set as a lavish Venetian banquet. Most visitors miss it because they're staring at the Mona Lisa opposite. Napoleon looted it from Venice in 1797.",
+   257|    category: "painting"
+   258|  },
+   259|  {
+   260|    id: "raft-medusa",
+   261|    title: "The Raft of the Medusa",
+   262|    artist: "Théodore Géricault",
+   263|    year: "1818–1819",
+   264|    medium: "Oil on canvas",
+   265|    wing: "denon", floor: 1, room: 700, position: "Salle Mollien",
+   266|    image: "https://images.weserv.nl/?url=upload.wikimedia.org/wikipedia/commons/thumb/1/15/JEAN_LOUIS_TH%C3%89ODORE_G%C3%89RICAULT_-_La_Balsa_de_la_Medusa_%28Museo_del_Louvre%2C_1818-19%29.jpg/480px-JEAN_LOUIS_TH%C3%89ODORE_G%C3%89RICAULT_-_La_Balsa_de_la_Medusa_%28Museo_del_Louvre%2C_1818-19%29.jpg&w=480",
+   267|    history: "A monumental 4.91 × 7.16 meter depiction of a real 1816 tragedy: a French naval frigate ran aground and 147 survivors drifted for 13 days on a raft — only 15 lived, resorting to cannibalism. Géricault interviewed survivors and studied corpses to achieve brutal realism. The painting became a political scandal.",
+   268|    category: "painting"
+   269|  },
+   270|  {
+   271|    id: "liberty",
+   272|    title: "Liberty Leading the People",
+   273|    artist: "Eugène Delacroix",
+   274|    year: "1830",
+   275|    medium: "Oil on canvas",
+   276|    wing: "denon", floor: 1, room: 700, position: "Salle Mollien",
+   277|    image: "https://images.weserv.nl/?url=upload.wikimedia.org/wikipedia/commons/thumb/0/02/La_Libert%C3%A9_guidant_le_peuple_-_Eug%C3%A8ne_Delacroix_-_Mus%C3%A9e_du_Louvre_Peintures_RF_129_-_apr%C3%A8s_restauration_2024.jpg/480px-La_Libert%C3%A9_guidant_le_peuple_-_Eug%C3%A8ne_Delacroix_-_Mus%C3%A9e_du_Louvre_Peintures_RF_129_-_apr%C3%A8s_restauration_2024.jpg&w=480",
+   278|    history: "Delacroix painted this in just three months, capturing the July Revolution of 1830 that toppled King Charles X. Liberty — a woman holding the tricolor flag and a bayonet — leads a diverse crowd over barricades. It became the universal symbol of revolution and is featured on French postage stamps.",
+   279|    category: "painting"
+   280|  },
+   281|  {
+   282|    id: "coronation-napoleon",
+   283|    title: "The Coronation of Napoleon",
+   284|    artist: "Jacques-Louis David",
+   285|    year: "1805–1807",
+   286|    medium: "Oil on canvas",
+   287|    wing: "denon", floor: 1, room: 702,
+   288|    image: "https://images.weserv.nl/?url=upload.wikimedia.org/wikipedia/commons/thumb/1/1e/Jacques-Louis_David_-_The_Coronation_of_Napoleon_%281805-1807%29.jpg/480px-Jacques-Louis_David_-_The_Coronation_of_Napoleon_%281805-1807%29.jpg&w=480",
+   289|    history: "A staggering 6.21 × 9.79 meter canvas capturing Napoleon crowning himself Emperor — a deliberate snub to the Pope, who sits passively behind him. David attended the ceremony and painted 191 individual portraits, many from life. Napoleon famously said: 'One walks through this painting.'",
+   290|    category: "painting"
+   291|  },
+   292|  {
+   293|    id: "virgin-rocks",
+   294|    title: "The Virgin of the Rocks",
+   295|    artist: "Leonardo da Vinci",
+   296|    year: "c. 1483–1486",
+   297|    medium: "Oil on panel",
+   298|    wing: "denon", floor: 1, room: 708,
+   299|    image: "https://images.weserv.nl/?url=upload.wikimedia.org/wikipedia/commons/thumb/e/e4/Leonardo_Da_Vinci_-_Vergine_delle_Rocce_%28Louvre%29.jpg/480px-Leonardo_Da_Vinci_-_Vergine_delle_Rocce_%28Louvre%29.jpg&w=480",
+   300|    history: "One of two versions — this is the earlier, entirely by Leonardo's hand. The strange, otherworldly grotto setting and the angel Uriel's mysterious pointing gesture have puzzled scholars for centuries. The Louvre acquired it from the French royal collection.",
+   301|    category: "painting"
+   302|  },
+   303|  {
+   304|    id: "death-virgin",
+   305|    title: "Death of the Virgin",
+   306|    artist: "Caravaggio",
+   307|    year: "1605–1606",
+   308|    medium: "Oil on canvas",
+   309|    wing: "denon", floor: 1, room: 710,
+   310|    image: "https://images.weserv.nl/?url=upload.wikimedia.org/wikipedia/commons/thumb/7/78/Death_of_the_Virgin-Caravaggio_%281606%29.jpg/480px-Death_of_the_Virgin-Caravaggio_%281606%29.jpg&w=480",
+   311|    history: "Caravaggio's radical realism scandalized Rome — he painted the Virgin's body as a real corpse with swollen feet, and rumor said he used a drowned prostitute as his model. The church that commissioned it rejected the painting. The dramatic chiaroscuro became his signature.",
+   312|    category: "painting"
+   313|  },
+   314|  {
+   315|    id: "lacemaker",
+   316|    title: "The Lacemaker",
+   317|    artist: "Johannes Vermeer",
+   318|    year: "c. 1669–1670",
+   319|    medium: "Oil on canvas",
+   320|    wing: "denon", floor: 1, room: 718,
+   321|    image: "https://images.weserv.nl/?url=upload.wikimedia.org/wikipedia/commons/thumb/0/03/Johannes_Vermeer_-_The_lacemaker_%28c.1669-1671%29.jpg/480px-Johannes_Vermeer_-_The_lacemaker_%28c.1669-1671%29.jpg&w=480",
+   322|    history: "Vermeer's smallest painting (24.5 × 21 cm) — and one of his most intimate. The young woman is completely absorbed in her needlework. Vermeer's blurred thread details create an almost photographic shallow depth of field, centuries ahead of its time. Only ~34 Vermeers exist worldwide.",
+   323|    category: "painting"
+   324|  },
+   325|  {
+   326|    id: "horatii",
+   327|    title: "Oath of the Horatii",
+   328|    artist: "Jacques-Louis David",
+   329|    year: "1784",
+   330|    medium: "Oil on canvas",
+   331|    wing: "denon", floor: 1, room: 724,
+   332|    image: "https://images.weserv.nl/?url=upload.wikimedia.org/wikipedia/commons/thumb/b/bd/Le_Serment_des_Horaces_-_Jacques-Louis_David_-_Mus%C3%A9e_du_Louvre_Peintures_INV_3692_%3B_MR_1432.jpg/480px-Le_Serment_des_Horaces_-_Jacques-Louis_David_-_Mus%C3%A9e_du_Louvre_Peintures_INV_3692_%3B_MR_1432.jpg&w=480",
+   333|    history: "The painting that launched Neoclassicism. Three Roman brothers swear an oath to fight to the death for Rome. The stark geometry, muted colors, and theatrical poses were a direct challenge to the frivolity of Rococo. It was an instant sensation at the 1785 Paris Salon.",
+   334|    category: "painting"
+   335|  },
+   336|  {
+   337|    id: "st-john",
+   338|    title: "St. John the Baptist",
+   339|    artist: "Leonardo da Vinci",
+   340|    year: "c. 1513–1516",
+   341|    medium: "Oil on walnut panel",
+   342|    wing: "denon", floor: 1, room: 712,
+   343|    image: "https://images.weserv.nl/?url=upload.wikimedia.org/wikipedia/commons/thumb/0/08/Leonardo_da_Vinci_-_Saint_John_the_Baptist_C2RMF_retouched.jpg/480px-Leonardo_da_Vinci_-_Saint_John_the_Baptist_C2RMF_retouched.jpg&w=480",
+   344|    history: "Leonardo's final painting, kept in his studio until his death. The androgynous figure, emerging from darkness with a mysterious smile and pointing upward, has been called one of the most psychologically complex portraits in Western art. Its sfumato technique reaches its peak here.",
+   345|    category: "painting"
+   346|  },
+   347|
+   348|  // === DENON WING, LEVEL 0 ===
+   349|  {
+   350|    id: "dying-slave",
+   351|    title: "The Dying Slave",
+   352|    artist: "Michelangelo",
+   353|    year: "1513–1516",
+   354|    medium: "Marble",
+   355|    wing: "denon", floor: 0, room: 403,
+   356|    image: "https://images.weserv.nl/?url=upload.wikimedia.org/wikipedia/commons/thumb/6/6d/Michelangelo%27s_Dying_Slave_-_Louvre.jpg/480px-Michelangelo%27s_Dying_Slave_-_Louvre.jpg&w=480",
+   357|    history: "Originally intended for Pope Julius II's tomb, this unfinished figure appears to be slipping from sleep into death rather than struggling. Michelangelo believed the figure was already in the marble waiting to be freed. The Rebellious Slave stands nearby, twisting in defiance.",
+   358|    category: "sculpture"
+   359|  },
+   360|  {
+   361|    id: "psyche-cupid",
+   362|    title: "Psyche Revived by Cupid's Kiss",
+   363|    artist: "Antonio Canova",
+   364|    year: "1793",
+   365|    medium: "Marble",
+   366|    wing: "denon", floor: 0, room: 105,
+   367|    image: "https://images.weserv.nl/?url=upload.wikimedia.org/wikipedia/commons/thumb/c/c8/Canova_-_Psyche_Revived_by_Cupid%27s_Kiss_-_detail_view.jpg/480px-Canova_-_Psyche_Revived_by_Cupid%27s_Kiss_-_detail_view.jpg&w=480",
+   368|    history: "From the Roman myth: Psyche is awakened by Cupid's kiss after opening a forbidden box that plunged her into deathlike sleep. Canova's marble achieves impossible lightness — their wings seem to float, and two bodies touch at only three points. One of the most romantic sculptures ever made.",
+   369|    category: "sculpture"
+   370|  },
+   371|
+   372|  // === SULLY WING, LEVEL 0 (Greek & Roman Antiquities) ===
+   373|  {
+   374|    id: "venus-de-milo",
+   375|    title: "Venus de Milo",
+   376|    artist: "Alexandros of Antioch",
+   377|    year: "c. 130–100 BC",
+   378|    medium: "Parian marble",
+   379|    wing: "sully", floor: 0, room: 345,
+   380|    image: "https://images.weserv.nl/?url=upload.wikimedia.org/wikipedia/commons/thumb/c/c2/Front_views_of_the_Venus_de_Milo.jpg/480px-Front_views_of_the_Venus_de_Milo.jpg&w=480",
+   381|    history: "Discovered in 1820 by a Greek farmer on the island of Milos — a French naval officer happened to be there and convinced authorities to acquire it. Her missing arms have sparked endless theories: was she holding an apple? A mirror? The marble's warm glow comes from the island's unique stone.",
+   382|    category: "sculpture"
+   383|  },
+   384|  {
+   385|    id: "hermaphroditus",
+   386|    title: "Sleeping Hermaphroditus",
+   387|    artist: "Ancient Roman / Bernini (mattress)",
+   388|    year: "2nd c. AD (mattress: 1620)",
+   389|    medium: "Marble",
+   390|    wing: "sully", floor: 0, room: 340,
+   391|    image: "https://images.weserv.nl/?url=upload.wikimedia.org/wikipedia/commons/thumb/b/b0/Borghese_Hermaphroditus_Louvre_Ma231.jpg/480px-Borghese_Hermaphroditus_Louvre_Ma231.jpg&w=480",
+   392|    history: "At first glance: a sleeping woman. Walk around and discover the surprise — the child of Hermes and Aphrodite, both male and female. Bernini carved the remarkably realistic marble mattress it lies on, commissioned by Cardinal Borghese who kept it in his private collection.",
+   393|    category: "sculpture"
+   394|  },
+   395|  {
+   396|    id: "borghese-gladiator",
+   397|    title: "Borghese Gladiator",
+   398|    artist: "Agasias of Ephesus",
+   399|    year: "c. 100 BC",
+   400|    medium: "Marble",
+   401|    wing: "sully", floor: 0, room: 304,
+   402|    image: "https://images.weserv.nl/?url=upload.wikimedia.org/wikipedia/commons/thumb/d/d0/Borghese_gladiator_1_mosaic_delaTorre.jpg/480px-Borghese_gladiator_1_mosaic_delaTorre.jpg&w=480",
+   403|    history: "A life-size warrior caught mid-combat, blocking an attack from above — his shield arm raised, body coiled with tension. Napoleon admired it so much he had it shipped to Paris after defeating the Borghese family. It influenced generations of artists, including Rodin.",
+   404|    category: "sculpture"
+   405|  },
+   406|  {
+   407|    id: "diana-versailles",
+   408|    title: "Diana of Versailles",
+   409|    artist: "Roman copy of Greek original",
+   410|    year: "1st–2nd c. AD",
+   411|    medium: "Marble",
+   412|    wing: "sully", floor: 0, room: 338,
+   413|    image: "https://images.weserv.nl/?url=upload.wikimedia.org/wikipedia/commons/thumb/3/30/Diane_de_Versailles_Leochares.jpg/480px-Diane_de_Versailles_Leochares.jpg&w=480",
+   414|    history: "The goddess of the hunt mid-stride, reaching for an arrow with a leaping stag at her side. A Roman marble copy of a lost Greek bronze from c. 325 BC. Once stood in the Hall of Mirrors at Versailles before the Revolution brought it to the Louvre.",
+   415|    category: "sculpture"
+   416|  },
+   417|
+   418|  // === SULLY WING, LEVEL 1 (Egyptian Antiquities) ===
+   419|  {
+   420|    id: "seated-scribe",
+   421|    title: "The Seated Scribe",
+   422|    artist: "Unknown (Egyptian Old Kingdom)",
+   423|    year: "c. 2600–2350 BC",
+   424|    medium: "Painted limestone, rock crystal eyes",
+   425|    wing: "sully", floor: 1, room: 636,
+   426|    image: "https://images.weserv.nl/?url=upload.wikimedia.org/wikipedia/commons/thumb/8/8d/Le_Scribe_accroupi_-_Mus%C3%A9e_du_Louvre_Antiquit%C3%A9s_%C3%A9gyptiennes_E_3023.jpg/480px-Le_Scribe_accroupi_-_Mus%C3%A9e_du_Louvre_Antiquit%C3%A9s_%C3%A9gyptiennes_E_3023.jpg&w=480",
+   427|    history: "One of the most lifelike Egyptian statues ever found. The scribe's eyes are inlaid with rock crystal and copper — they follow you as you walk past. In a culture that idealized youth and perfection, this middle-aged man with a slight belly was revolutionary. Found at Saqqara in 1850.",
+   428|    category: "antiquity"
+   429|  },
+   430|  {
+   431|    id: "great-sphinx",
+   432|    title: "Great Sphinx of Tanis",
+   433|    artist: "Unknown (Egyptian Old Kingdom)",
+   434|    year: "c. 2600 BC",
+   435|    medium: "Granite",
+   436|    wing: "sully", floor: 1, room: 635,
+   437|    image: "https://images.weserv.nl/?url=upload.wikimedia.org/wikipedia/commons/thumb/a/a3/Louvre_032007_22.jpg/480px-Louvre_032007_22.jpg&w=480",
+   438|    history: "One of the largest sphinxes outside Egypt, carved from a single block of rose granite over 4,600 years ago. The lion body represents strength; the pharaoh's head represents wisdom. Hieroglyphs name Pharaoh Amenemhat II. It guards the entrance to the Egyptian galleries.",
+   439|    category: "antiquity"
+   440|  },
+   441|  {
+   442|    id: "ramesses-ii",
+   443|    title: "Colossal Statue of Ramesses II",
+   444|    artist: "Unknown (Egyptian New Kingdom)",
+   445|    year: "c. 1250 BC",
+   446|    medium: "Granite",
+   447|    wing: "sully", floor: 1, room: 640,
+   448|    image: "https://images.weserv.nl/?url=upload.wikimedia.org/wikipedia/commons/thumb/0/03/RamsesIIEgypt.jpg/480px-RamsesIIEgypt.jpg&w=480",
+   449|    history: "Ramesses II ruled Egypt for 66 years and built more monuments than any other pharaoh. This colossal statue shows him with the crook and flail, symbols of kingship. It once stood at the Temple of Ptah in Memphis. The cartouche on his shoulder bears his throne name.",
+   450|    category: "antiquity"
+   451|  },
+   452|  {
+   453|    id: "akhenaten",
+   454|    title: "Colossal Statue of Akhenaten",
+   455|    artist: "Unknown (Egyptian New Kingdom)",
+   456|    year: "c. 1350 BC",
+   457|    medium: "Sandstone",
+   458|    wing: "sully", floor: 1, room: 638,
+   459|    image: "https://images.weserv.nl/?url=upload.wikimedia.org/wikipedia/commons/thumb/3/30/Akhenaten_statue.jpg/480px-Akhenaten_statue.jpg&w=480",
+   460|    history: "The 'heretic pharaoh' who abandoned Egypt's pantheon for a single sun god, Aten. This statue's strange features — elongated face, full lips, narrow shoulders — sparked theories of genetic disorders, but likely represent a radical new artistic style Akhenaten imposed.",
+   461|    category: "antiquity"
+   462|  },
+   463|
+   464|  // === RICHELIEU WING, LEVEL 1 ===
+   465|  {
+   466|    id: "napoleon-apartments",
+   467|    title: "Napoleon III Apartments (Grand Salon)",
+   468|    artist: "Charles Raphaël Maréchal (decor)",
+   469|    year: "1854–1861",
+   470|    medium: "Gilt stucco, velvet, crystal chandeliers",
+   471|    wing: "richelieu", floor: 1, room: 544,
+   472|    image: "https://images.weserv.nl/?url=upload.wikimedia.org/wikipedia/commons/thumb/f/f5/Grand_Salon_Napol%C3%A9on_III_Louvre_Mus%C3%A9e_du_Louvre_Paris.jpg/480px-Grand_Salon_Napol%C3%A9on_III_Louvre_Mus%C3%A9e_du_Louvre_Paris.jpg&w=480",
+   473|    history: "A time capsule of Second Empire excess. Gold-encrusted ceiling, crimson velvet drapes, Baccarat crystal chandeliers, and Sèvres porcelain. Napoleon III used these rooms for grand state dinners. The most complete surviving example of Second Empire interior design.",
+   474|    category: "interior"
+   475|  },
+   476|  {
+   477|    id: "hammurabi",
+   478|    title: "Code of Hammurabi",
+   479|    artist: "Unknown (Babylonian)",
+   480|    year: "c. 1750 BC",
+   481|    medium: "Basalt stele",
+   482|    wing: "richelieu", floor: 1, room: 501,
+   483|    image: "https://images.weserv.nl/?url=upload.wikimedia.org/wikipedia/commons/thumb/1/15/P1050763_Louvre_code_Hammurabi_face_rwk.JPG/480px-P1050763_Louvre_code_Hammurabi_face_rwk.JPG&w=480",
+   484|    history: "The oldest surviving written law code in the world. The top shows King Hammurabi receiving the laws from the sun god Shamash. Below: 282 laws in cuneiform script covering property, trade, and family — 'an eye for an eye' originates here. Found in 1901 in present-day Iran.",
+   485|    category: "antiquity"
+   486|  },
+   487|
+   488|  // === RICHELIEU WING, LEVEL 2 (Northern European Paintings) ===
+   489|  {
+   490|    id: "astronomer",
+   491|    title: "The Astronomer",
+   492|    artist: "Johannes Vermeer",
+   493|    year: "1668",
+   494|    medium: "Oil on canvas",
+   495|    wing: "richelieu", floor: 2, room: 802,
+   496|    image: "https://images.weserv.nl/?url=upload.wikimedia.org/wikipedia/commons/thumb/6/6a/Johannes_Vermeer_-_The_Astronomer_-_WGA24685.jpg/480px-Johannes_Vermeer_-_The_Astronomer_-_WGA24685.jpg&w=480",
+   497|    history: "A scholar reaches toward a celestial globe, bathed in Vermeer's signature golden light. The painting on the wall shows 'The Finding of Moses' — linking divine guidance and scientific discovery. Possibly a portrait of Antonie van Leeuwenhoek, the father of microbiology.",
+   498|    category: "painting"
+   499|  },
+   500|  {
+   501|    id: "card-sharp",
+   502|    title: "The Card Sharp with the Ace of Diamonds",
+   503|    artist: "Georges de La Tour",
+   504|    year: "c. 1635",
+   505|    medium: "Oil on canvas",
+   506|    wing: "richelieu", floor: 2, room: 837,
+   507|    image: "https://images.weserv.nl/?url=upload.wikimedia.org/wikipedia/commons/thumb/4/4f/Georges_de_La_Tour_-_Le_Tricheur_%C3%A0_l%27as_de_carreau_-_detail.jpg/480px-Georges_de_La_Tour_-_Le_Tricheur_%C3%A0_l%27as_de_carreau_-_detail.jpg&w=480",
+   508|    history: "A tense drama in candlelight: a young nobleman is being cheated at cards. Three accomplices communicate through subtle glances. De La Tour was forgotten for 250 years and rediscovered only in the 20th century. This painting helped establish him as a master of psychological tension.",
+   509|    category: "painting"
+   510|  },
+   511|
+   512|  // === TRANSITION / ARCHITECTURE (visible regardless of wing) ===
+   513|  {
+   514|    id: "pyramid",
+   515|    title: "The Louvre Pyramid",
+   516|    artist: "I. M. Pei",
+   517|    year: "1989",
+   518|    medium: "Glass and steel",
+   519|    wing: "all", floor: 0, room: 0,
+   520|    position: "Cour Napoléon (main entrance)",
+   521|    image: "https://images.weserv.nl/?url=upload.wikimedia.org/wikipedia/commons/thumb/f/f8/Louvre_Pyramid_%2848636222261%29.jpg/480px-Louvre_Pyramid_%2848636222261%29.jpg&w=480",
+   522|    history: "When unveiled, Parisians were furious — a glass pyramid in front of a Renaissance palace? Today it's the symbol of the Louvre. 673 glass panes (not the 666 of conspiracy theories). At night, the illuminated pyramid is one of the most photographed sights in Paris.",
+   523|    category: "architecture"
+   524|  },
+   525|  {
+   526|    id: "inverted-pyramid",
+   527|    title: "The Inverted Pyramid",
+   528|    artist: "I. M. Pei",
+   529|    year: "1993",
+   530|    medium: "Glass and steel",
+   531|    wing: "all", floor: -1, room: 0,
+   532|    position: "Carrousel du Louvre (underground mall)",
+   533|    image: "https://images.weserv.nl/?url=upload.wikimedia.org/wikipedia/commons/thumb/5/58/Louvre_inverted_pyramid.jpg/480px-Louvre_inverted_pyramid.jpg&w=480",
+   534|    history: "Made famous by The Da Vinci Code — the inverted pyramid hangs dramatically above a small stone pyramid below, forming a glass chandelier effect. It brings daylight into the underground shopping area. The book's 'Holy Grail beneath the pyramid' is fiction, but great fun.",
+   535|    category: "architecture"
+   536|  }
+   537|];
+   538|
+   539|
+   540|// ─────────────────────────────────────
+   541|// NAVIGATION DATA
+   542|// ─────────────────────────────────────
+   543|const WINGS = [
+   544|  { id: "denon", name: "Denon Wing", desc: "Italian paintings, Greek sculpture, Mona Lisa" },
+   545|  { id: "sully", name: "Sully Wing", desc: "Egyptian antiquities, Venus de Milo, Greek & Roman" },
+   546|  { id: "richelieu", name: "Richelieu Wing", desc: "Napoleon III Apartments, Near Eastern art, Dutch paintings" }
+   547|];
+   548|
+   549|const FLOORS = [
+   550|  { id: -1, name: "Lower Ground (−1)", desc: "Inverted Pyramid, medieval Louvre" },
+   551|  { id: 0, name: "Ground Floor (0)", desc: "Greek, Roman & Etruscan sculptures" },
+   552|  { id: 1, name: "First Floor (1)", desc: "Mona Lisa, Italian paintings, Egyptian galleries" },
+   553|  { id: 2, name: "Second Floor (2)", desc: "Northern European paintings, Dutch masters" }
+   554|];
+   555|
+   556|const FEATURED_SPOTS = [
+   557|  { label: "🖼️ Mona Lisa", wing: "denon", floor: 1, room: 711 },
+   558|  { label: "🗽 Venus de Milo", wing: "sully", floor: 0, room: 345 },
+   559|  { label: "🪽 Winged Victory", wing: "denon", floor: 1, room: 703 },
+   560|  { label: "👑 Napoleon III Apt", wing: "richelieu", floor: 1, room: 544 },
+   561|  { label: "🇫🇷 Liberty", wing: "denon", floor: 1, room: 700 },
+   562|  { label: "✍️ Seated Scribe", wing: "sully", floor: 1, room: 636 },
+   563|];
+   564|
+   565|
+   566|// ─────────────────────────────────────
+   567|// STATE
+   568|// ─────────────────────────────────────
+   569|let selectedWing = null;
+   570|let selectedFloor = null;
+   571|let deferredPrompt = null;
+   572|
+   573|
+   574|// ─────────────────────────────────────
+   575|// STEP INDICATOR
+   576|// ─────────────────────────────────────
+   577|function updateSteps(activeStep) {
+   578|  for (let i = 1; i <= 3; i++) {
+   579|    document.getElementById('step' + i).classList.toggle('active', i === activeStep);
+   580|  }
+   581|}
+   582|
+   583|
+   584|// ─────────────────────────────────────
+   585|// ROOM HELPER
+   586|// ─────────────────────────────────────
+   587|function getRoomsForWingFloor(wing, floor) {
+   588|  const roomSet = new Map();
+   589|  ARTWORKS
+   590|    .filter(a => (a.wing === wing || a.wing === 'all') && (a.floor === floor || a.wing === 'all'))
+   591|    .forEach(a => {
+   592|      if (!roomSet.has(a.room)) {
+   593|        roomSet.set(a.room, {
+   594|          room: a.room,
+   595|          breadcrumb: a.position || `Wing ${wing}, Level ${floor}`,
+   596|          count: 0
+   597|        });
+   598|      }
+   599|      roomSet.get(a.room).count++;
+   600|    });
+   601|  return Array.from(roomSet.values()).sort((a, b) => a.room - b.room);
+   602|}
+   603|
+   604|
+   605|// ─────────────────────────────────────
+   606|// SELECTOR RENDERING
+   607|// ─────────────────────────────────────
+   608|function renderWingSelector() {
+   609|  updateSteps(1);
+   610|  document.getElementById('selectorContainer').innerHTML = `
+   611|    <label>Which wing are you in?</label>
+   612|    <select id="sel" onchange="selectWing(this.value)">
+   613|      <option value="">— Select a wing —</option>
+   614|      ${WINGS.map(w => `<option value="${w.id}">${w.name} — ${w.desc}</option>`).join('')}
+   615|    </select>
+   616|  `;
+   617|  document.getElementById('resultsHeader').style.display = 'none';
+   618|  document.getElementById('results').innerHTML = `
+   619|    <div class="empty-state">
+   620|      <div class="emoji">📍</div>
+   621|      <p>Start by selecting which wing of the Louvre you're standing in</p>
+   622|      <p style="font-size:0.75rem;margin-top:8px;">Or tap a quick-jump button below</p>
+   623|    </div>`;
+   624|}
+   625|
+   626|function selectWing(wingId) {
+   627|  if (!wingId) return;
+   628|  selectedWing = wingId;
+   629|  renderFloorSelector();
+   630|}
+   631|
+   632|function renderFloorSelector() {
+   633|  updateSteps(2);
+   634|  const wingName = WINGS.find(w => w.id === selectedWing).name;
+   635|  document.getElementById('selectorContainer').innerHTML = `
+   636|    <label>Which floor of the ${wingName}?</label>
+   637|    <select id="sel" onchange="selectFloor(this.value)">
+   638|      <option value="">— Select a floor —</option>
+   639|      ${FLOORS.map(f => `<option value="${f.id}">${f.name} — ${f.desc}</option>`).join('')}
+   640|    </select>
+   641|    <button class="back-link" onclick="resetToWing()">← Back to wings</button>
+   642|  `;
+   643|  document.getElementById('resultsHeader').style.display = 'none';
+   644|  document.getElementById('results').innerHTML = '';
+   645|}
+   646|
+   647|function selectFloor(floorId) {
+   648|  if (floorId === '') return;
+   649|  selectedFloor = parseInt(floorId);
+   650|  renderRoomSelector();
+   651|}
+   652|
+   653|function resetToWing() {
+   654|  selectedWing = null;
+   655|  selectedFloor = null;
+   656|  renderWingSelector();
+   657|}
+   658|
+   659|function renderRoomSelector() {
+   660|  updateSteps(3);
+   661|  const rooms = getRoomsForWingFloor(selectedWing, selectedFloor);
+   662|  document.getElementById('selectorContainer').innerHTML = `
+   663|    <label>What room number are you in?</label>
+   664|    <select id="sel" onchange="showNearbyArtworks(parseInt(this.value))">
+   665|      <option value="">— Select room —</option>
+   666|      ${rooms.map(r => `<option value="${r.room}">Room ${r.room} → ${r.breadcrumb}</option>`).join('')}
+   667|    </select>
+   668|    <button class="back-link" onclick="goBackToFloor()">← Back to floors</button>
+   669|  `;
+   670|  document.getElementById('resultsHeader').style.display = 'none';
+   671|  document.getElementById('results').innerHTML = '';
+   672|}
+   673|
+   674|function goBackToFloor() {
+   675|  renderFloorSelector();
+   676|}
+   677|
+   678|
+   679|// ─────────────────────────────────────
+   680|// RESULTS DISPLAY
+   681|// ─────────────────────────────────────
+   682|function showNearbyArtworks(userRoom) {
+   683|  const nearby = ARTWORKS
+   684|    .filter(a => {
+   685|      return (a.wing === selectedWing && a.floor === selectedFloor) ||
+   686|             (a.wing === 'all' && a.floor === selectedFloor);
+   687|    })
+   688|    .map(a => ({
+   689|      ...a,
+   690|      distance: Math.abs(a.room - userRoom)
+   691|    }))
+   692|    .sort((a, b) => a.distance - b.distance);
+   693|
+   694|  document.getElementById('resultsHeader').style.display = 'flex';
+   695|  document.getElementById('resultCount').textContent = `${nearby.length} found`;
+   696|
+   697|  if (nearby.length === 0) {
+   698|    document.getElementById('results').innerHTML = `
+   699|      <div class="empty-state">
+   700|        <div class="emoji">🔍</div>
+   701|        <p>No artworks in our guide for this area.<br>Try a different room number.</p>
+   702|      </div>`;
+   703|    return;
+   704|  }
+   705|
+   706|  const categoryEmoji = {
+   707|    painting: '🎨',
+   708|    sculpture: '🗿',
+   709|    antiquity: '🏺',
+   710|    interior: '🏰',
+   711|    architecture: '🏗️'
+   712|  };
+   713|
+   714|  document.getElementById('results').innerHTML = nearby.map((a, i) => `
+   715|    <div class="artwork-card">
+   716|      <img src="${a.image}" alt="${a.title}" loading="${i < 2 ? 'eager' : 'lazy'}"
+   717|           onerror="this.outerHTML='<div style=\\'height:60px;background:var(--bg);border-radius:var(--radius) var(--radius) 0 0\\'></div>'">
+   718|      <div class="card-body">
+   719|        <h3>${a.title} <span class="category">${categoryEmoji[a.category] || ''} ${a.category}</span></h3>
+   720|        <div class="artist">${a.artist}, ${a.year}</div>
+   721|        <div class="meta">
+   722|          <span>📐 ${a.medium}</span>
+   723|          <span>🚪 Room ${a.room}</span>
+   724|        </div>
+   725|        <div class="history">${a.history}</div>
+   726|        ${a.distance === 0
+   727|          ? '<div class="distance">📍 You are here — in this room!</div>'
+   728|          : `<div class="distance">📍 ~${a.distance} room${a.distance > 1 ? 's' : ''} away</div>`}
+   729|      </div>
+   730|    </div>
+   731|  `).join('');
+   732|}
+   733|
+   734|
+   735|// ─────────────────────────────────────
+   736|// QUICK JUMPS
+   737|// ─────────────────────────────────────
+   738|function renderQuickJumps() {
+   739|  document.getElementById('quickJumps').innerHTML = FEATURED_SPOTS.map(s => `
+   740|    <button onclick="jumpTo('${s.wing}', ${s.floor}, ${s.room})">${s.label}</button>
+   741|  `).join('');
+   742|}
+   743|
+   744|function jumpTo(wing, floor, room) {
+   745|  selectedWing = wing;
+   746|  selectedFloor = floor;
+   747|  updateSteps(3);
+   748|  document.getElementById('selectorContainer').innerHTML = `
+   749|    <label>📍 You jumped to: ${FEATURED_SPOTS.find(s => s.room === room)?.label || 'Room ' + room}</label>
+   750|    <p style="font-size:0.8rem;color:var(--text-muted);margin-bottom:10px;">
+   751|      ${WINGS.find(w=>w.id===wing).name}, Floor ${floor}, Room ${room}
+   752|    </p>
+   753|    <button class="back-link" onclick="resetToWing()">← Navigate from scratch</button>
+   754|  `;
+   755|  showNearbyArtworks(room);
+   756|}
+   757|
+   758|
+   759|// ─────────────────────────────────────
+   760|// PWA INSTALL
+   761|// ─────────────────────────────────────
+   762|window.addEventListener('beforeinstallprompt', e => {
+   763|  e.preventDefault();
+   764|  deferredPrompt = e;
+   765|  const banner = document.createElement('div');
+   766|  banner.id = 'installBanner';
+   767|  banner.innerHTML = `
+   768|    <div style="position:fixed;bottom:0;left:0;right:0;background:var(--surface);padding:14px 20px;
+   769|                border-top:2px solid var(--gold);display:flex;align-items:center;gap:12px;z-index:100;
+   770|                justify-content:space-between;">
+   771|      <span style="font-size:0.85rem;">📲 Add to home screen for quick access</span>
+   772|      <div style="display:flex;gap:8px;">
+   773|        <button onclick="dismissInstall()" style="background:none;color:var(--text-muted);border:none;font-size:0.8rem;padding:6px;">Later</button>
+   774|        <button onclick="installApp()" style="background:var(--gold);color:var(--bg);border:none;padding:8px 16px;border-radius:20px;font-weight:bold;font-size:0.8rem;">Install</button>
+   775|      </div>
+   776|    </div>`;
+   777|  document.body.appendChild(banner);
+   778|});
+   779|
+   780|function installApp() {
+   781|  if (deferredPrompt) {
+   782|    deferredPrompt.prompt();
+   783|    deferredPrompt.userChoice.then(result => {
+   784|      console.log('Install:', result.outcome);
+   785|      deferredPrompt = null;
+   786|      document.getElementById('installBanner')?.remove();
+   787|    });
+   788|  }
+   789|}
+   790|
+   791|function dismissInstall() {
+   792|  document.getElementById('installBanner')?.remove();
+   793|}
+   794|
+   795|// ─────────────────────────────────────
+   796|// SERVICE WORKER
+   797|// ─────────────────────────────────────
+   798|if ('serviceWorker' in navigator) {
+   799|  navigator.serviceWorker.register('/louvre-tour/sw.js')
+   800|    .then(reg => console.log('SW registered:', reg.scope))
+   801|    .catch(err => console.log('SW failed:', err));
+   802|}
+   803|
+   804|// ─────────────────────────────────────
+   805|// INIT
+   806|// ─────────────────────────────────────
+   807|renderQuickJumps();
+   808|renderWingSelector();
+   809|</script>
+   810|</body>
+   811|</html>
+   812|
